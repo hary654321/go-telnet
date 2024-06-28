@@ -4,7 +4,7 @@
  * @Autor: ABing
  * @Date: 2024-06-28 11:19:50
  * @LastEditors: lhl
- * @LastEditTime: 2024-06-28 11:22:52
+ * @LastEditTime: 2024-06-28 11:50:56
  */
 package cmd
 
@@ -25,4 +25,8 @@ func Cmd(cmd string) string {
 	}
 
 	return string(out)
+}
+
+func IsCommand(cmd string) bool {
+	return true
 }

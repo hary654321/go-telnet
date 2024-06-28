@@ -1,0 +1,1 @@
+{"type":"scan","timestamp":1719550772518,"protocol":"HTTP","app":"telnet","name":"telnet","UUID":"\u003cUUID\u003e","dest_port":5555,"src_ip":"127.0.0.1","src_port":29190,"dest_ip":"127.0.0.1"}
