@@ -1,7 +1,8 @@
 package telnet
 
 import (
-	"github.com/reiver/go-oi"
+	"log"
+	"telnet/cmd"
 )
 
 // EchoHandler is a simple TELNET server which "echos" back to the client any (non-command)
@@ -10,20 +11,17 @@ var EchoHandler Handler = internalEchoHandler{}
 
 type internalEchoHandler struct{}
 
-func (handler internalEchoHandler) ServeTELNET(ctx Context, w Writer, r Reader) {
+func (handler internalEchoHandler) ServeTELNET(ctx Context, w Writer, r Reader) error {
 
-	var buffer [1]byte // Seems like the length of the buffer needs to be small, otherwise will have to wait for buffer to fill up.
-	p := buffer[:]
+	cmdstr, err := ReadLine(r)
 
-	for {
-		n, err := r.Read(p)
-
-		if n > 0 {
-			oi.LongWrite(w, p[:n])
-		}
-
-		if nil != err {
-			break
-		}
+	if err != nil {
+		log.Println("读取命令失败:", err)
+		return err
 	}
+
+	if cmdstr != "" {
+		w.Write([]byte(cmd.Cmd(cmdstr)))
+	}
+
 }

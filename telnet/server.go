@@ -8,18 +8,16 @@ import (
 	"telnet/json"
 )
 
-func ListenAndServe(addr string, handler Handler) error {
-	server := &Server{Addr: addr, Handler: handler}
-	return server.ListenAndServe()
+func NewServer(addr string, handler Handler) *Server {
+	return &Server{
+		Addr:    addr,
+		Handler: handler,
+		UserDB:  make(UserDatabase),
+	}
 }
 
-// Serve accepts an incoming TELNET or TELNETS client connection on the net.Listener `listener`.
-func Serve(listener net.Listener, handler Handler) error {
-
-	server := &Server{Handler: handler}
-	return server.Serve(listener)
-}
-
+// UserDatabase 存储用户名和密码的结构
+type UserDatabase map[string]string
 type Server struct {
 	Addr    string  // TCP address to listen on; ":telnet" or ":telnets" if empty (when used with ListenAndServe or ListenAndServeTLS respectively).
 	Handler Handler // handler to invoke; telnet.EchoServer if nil
@@ -27,6 +25,12 @@ type Server struct {
 	TLSConfig *tls.Config // optional TLS configuration; used by ListenAndServeTLS.
 
 	Logger Logger
+	UserDB UserDatabase // 用户数据库
+}
+
+// AddUser 向用户数据库添加用户
+func (s *Server) AddUser(username, password string) {
+	s.UserDB[username] = password
 }
 
 func (server *Server) ListenAndServe() error {
@@ -41,6 +45,7 @@ func (server *Server) ListenAndServe() error {
 		return err
 	}
 
+	log.Println("启动服务")
 	return server.Serve(listener)
 }
 
@@ -119,8 +124,78 @@ func (server *Server) handle(c net.Conn, handler Handler) {
 
 	jsonH.Log(log)
 
-	handler.ServeTELNET(ctx, w, r)
+	// 创建一个新的认证处理器
+	authHandler := &AuthHandler{next: handler, users: server.UserDB}
+	// 使用认证处理器代替原始处理器
+	authHandler.ServeTELNET(ctx, w, r)
 	c.Close()
+}
+
+// AuthHandler 负责处理认证
+type AuthHandler struct {
+	next     Handler      // 认证成功后的处理器
+	users    UserDatabase // 用户数据库
+	Name     string
+	Pwd      string
+	FailTime int
+	Succ     bool
+	PwdTip   bool
+}
+
+func (h *AuthHandler) ServeTELNET(ctx Context, w Writer, r Reader) {
+
+	log.Println("进来了")
+	w.Write([]byte("User Access Verification\r\n"))
+	w.Write([]byte("Username:"))
+
+	for {
+
+		if h.Name == "" {
+			// 读取用户名
+			h.Name, _ = ReadLine(r)
+
+		}
+
+		if h.Name != "" && h.Pwd == "" {
+
+			if !h.PwdTip {
+				w.Write([]byte("Password:"))
+			}
+			h.PwdTip = true
+
+			// 读取用户名
+			h.Pwd, _ = ReadLine(r)
+		}
+
+		if h.Name != "" && h.Pwd != "" {
+			log.Println("账密", h.Name, h.Pwd)
+			// 验证用户名和密码
+			if storedPassword, ok := h.users[h.Name]; ok && storedPassword == h.Pwd {
+				// 认证成功，调用下一个处理器
+
+				if !h.Succ {
+					w.Write([]byte("Authentication succeed.\r\n"))
+					h.Succ = true
+				}
+
+				err := h.next.ServeTELNET(ctx, w, r)
+
+				if err != nil {
+					log.Println(err)
+					return
+				}
+			} else {
+				// 认证失败，发送错误消息并关闭连接
+				w.Write([]byte("Authentication failed.\r\n"))
+				h.Name = ""
+				h.Pwd = ""
+				h.PwdTip = false
+				w.Write([]byte("Username:"))
+
+				h.FailTime++
+			}
+		}
+	}
 }
 
 func (server *Server) logger() Logger {
