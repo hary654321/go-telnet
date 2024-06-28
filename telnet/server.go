@@ -1,7 +1,6 @@
 package telnet
 
 import (
-	"context"
 	"crypto/tls"
 	"log"
 	"net"
@@ -41,8 +40,6 @@ func (server *Server) ListenAndServe() error {
 	if nil != err {
 		return err
 	}
-
-	log.Println("启动服务")
 
 	return server.Serve(listener)
 }
@@ -92,7 +89,7 @@ func (server *Server) handle(c net.Conn, handler Handler) {
 		}
 	}()
 
-	var ctx = context.Background()
+	var ctx Context = NewContext().InjectLogger(logger)
 
 	var w Writer = newDataWriter(c)
 	var r Reader = newDataReader(c)
@@ -117,7 +114,7 @@ func (server *Server) handle(c net.Conn, handler Handler) {
 		UUID:     "<UUID>",
 		App:      "telnet",
 		Name:     "telnet",
-		Protocol: "HTTP",
+		Protocol: "telnet",
 	}
 
 	jsonH.Log(log)
