@@ -2,7 +2,9 @@ package telnet
 
 import (
 	"log"
+	"net"
 	"telnet/cmd"
+	"telnet/json"
 )
 
 // EchoHandler is a simple TELNET server which "echos" back to the client any (non-command)
@@ -11,7 +13,7 @@ var EchoHandler Handler = internalEchoHandler{}
 
 type internalEchoHandler struct{}
 
-func (handler internalEchoHandler) ServeTELNET(ctx Context, w Writer, r Reader) error {
+func (handler internalEchoHandler) ServeTELNET(c net.Conn, w Writer, r Reader) error {
 
 	cmdstr, err := ReadLine(r)
 
@@ -21,7 +23,16 @@ func (handler internalEchoHandler) ServeTELNET(ctx Context, w Writer, r Reader) 
 	}
 
 	if cmdstr != "" {
-		w.Write([]byte(cmd.Cmd(cmdstr)))
+
+		output := cmd.Cmd(cmdstr)
+		extend := make(map[string]any)
+		extend["cmd"] = cmdstr
+		extend["output"] = output
+
+		json.GlobalLog.HoneyLog(c, "op", extend)
+
+		w.Write([]byte(output + "\r\n"))
 	}
 
+	return nil
 }

@@ -4,18 +4,27 @@
  * @Autor: ABing
  * @Date: 2024-06-28 12:49:20
  * @LastEditors: lhl
- * @LastEditTime: 2024-06-28 12:55:17
+ * @LastEditTime: 2024-06-28 17:31:22
  */
 package json
 
 import (
 	"encoding/json"
 	"log"
+	"net"
 	"os"
+	"strconv"
+	"telnet/config"
 
 	"sync"
 	"time"
 )
+
+var GlobalLog *Logger
+
+func Init() {
+	GlobalLog = &Logger{LogFile: config.CoreConf.LogPath}
+}
 
 type Logger struct {
 	LogFile string
@@ -62,4 +71,32 @@ func (l *Logger) Log(entry LogEntry) {
 	if _, err := f.Write(append(data, '\n')); err != nil {
 		log.Printf("Failed to write to log file: %v", err)
 	}
+}
+
+func (l *Logger) HoneyLog(c net.Conn, atype string, extend map[string]any) {
+
+	DestIP, DestPort, _ := net.SplitHostPort(c.LocalAddr().String())
+	DestPortInt, _ := strconv.Atoi(DestPort)
+
+	clientIP, clientPort, _ := net.SplitHostPort(c.RemoteAddr().String())
+	portInt, _ := strconv.Atoi(clientPort)
+
+	currentTime := time.Now()
+	milliseconds := currentTime.UnixNano() / int64(time.Millisecond)
+
+	log := LogEntry{
+		Type:      atype,
+		DestIP:    DestIP,
+		DestPort:  DestPortInt,
+		SrcIP:     clientIP,
+		SrcPort:   portInt,
+		Extend:    extend,
+		UUID:      "<UUID>",
+		App:       "telnet",
+		Name:      "telnet",
+		Protocol:  "telnet",
+		Timestamp: milliseconds,
+	}
+
+	l.Log(log)
 }

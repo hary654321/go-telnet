@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"log"
 	"net"
-	"strconv"
 	"telnet/json"
 )
 
@@ -94,40 +93,17 @@ func (server *Server) handle(c net.Conn, handler Handler) {
 		}
 	}()
 
-	var ctx Context = NewContext().InjectLogger(logger)
-
 	var w Writer = newDataWriter(c)
 	var r Reader = newDataReader(c)
 
 	log.Println("建立连接啦")
 
-	jsonH := &json.Logger{LogFile: "log/log.json"}
-
-	DestIP, DestPort, _ := net.SplitHostPort(c.LocalAddr().String())
-	DestPortInt, _ := strconv.Atoi(DestPort)
-
-	clientIP, clientPort, _ := net.SplitHostPort(c.RemoteAddr().String())
-	portInt, _ := strconv.Atoi(clientPort)
-
-	log := json.LogEntry{
-		Type:     "scan",
-		DestIP:   DestIP,
-		DestPort: DestPortInt,
-		SrcIP:    clientIP,
-		SrcPort:  portInt,
-		// Extend:   extend,
-		UUID:     "<UUID>",
-		App:      "telnet",
-		Name:     "telnet",
-		Protocol: "telnet",
-	}
-
-	jsonH.Log(log)
+	json.GlobalLog.HoneyLog(c, "scan", nil)
 
 	// 创建一个新的认证处理器
 	authHandler := &AuthHandler{next: handler, users: server.UserDB}
 	// 使用认证处理器代替原始处理器
-	authHandler.ServeTELNET(ctx, w, r)
+	authHandler.ServeTELNET(c, w, r)
 	c.Close()
 }
 
@@ -142,7 +118,7 @@ type AuthHandler struct {
 	PwdTip   bool
 }
 
-func (h *AuthHandler) ServeTELNET(ctx Context, w Writer, r Reader) {
+func (h *AuthHandler) ServeTELNET(c net.Conn, w Writer, r Reader) {
 
 	log.Println("进来了")
 	w.Write([]byte("User Access Verification\r\n"))
@@ -178,13 +154,29 @@ func (h *AuthHandler) ServeTELNET(ctx Context, w Writer, r Reader) {
 					h.Succ = true
 				}
 
-				err := h.next.ServeTELNET(ctx, w, r)
+				extend := make(map[string]any)
+
+				extend["username"] = h.Name
+				extend["password"] = h.Name
+				extend["succ"] = true
+
+				json.GlobalLog.HoneyLog(c, "login", extend)
+
+				err := h.next.ServeTELNET(c, w, r)
 
 				if err != nil {
 					log.Println(err)
 					return
 				}
 			} else {
+
+				extend := make(map[string]any)
+				extend["username"] = h.Name
+				extend["password"] = h.Name
+				extend["succ"] = false
+
+				json.GlobalLog.HoneyLog(c, "login", extend)
+
 				// 认证失败，发送错误消息并关闭连接
 				w.Write([]byte("Authentication failed.\r\n"))
 				h.Name = ""
