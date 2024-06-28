@@ -15,7 +15,7 @@ type internalEchoHandler struct{}
 
 func (handler internalEchoHandler) ServeTELNET(c net.Conn, w Writer, r Reader) error {
 
-	cmdstr, err := ReadLine(r)
+	cmdstr, err := ReadLine(c, r)
 
 	if err != nil {
 		log.Println("读取命令失败:", err)

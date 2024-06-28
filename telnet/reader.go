@@ -1,8 +1,11 @@
 package telnet
 
 import (
+	"fmt"
 	"log"
+	"net"
 	"strings"
+	"telnet/json"
 )
 
 type Reader interface {
@@ -10,7 +13,7 @@ type Reader interface {
 }
 
 // readLine 从Reader中读取一行数据，直到遇到 '\n'
-func ReadLine(r Reader) (string, error) {
+func ReadLine(c net.Conn, r Reader) (string, error) {
 
 	res := ""
 	for {
@@ -28,7 +31,8 @@ func ReadLine(r Reader) (string, error) {
 		log.Println("tmp:", buffer)
 
 		if buffer[0] == 3 {
-			return "close", nil
+			json.GlobalLog.HoneyLog(c, "close", nil)
+			return "close", fmt.Errorf("exit")
 		}
 
 		if tmp == "\n" {

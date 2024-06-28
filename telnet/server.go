@@ -121,17 +121,37 @@ type AuthHandler struct {
 func (h *AuthHandler) ServeTELNET(c net.Conn, w Writer, r Reader) {
 
 	log.Println("进来了")
+	h.FailTime = 1
 	w.Write([]byte("User Access Verification\r\n"))
 	w.Write([]byte("Username:"))
 
+	var err error
 	for {
 
+		//已登录
+		if h.Succ {
+			err = h.next.ServeTELNET(c, w, r)
+
+			if err != nil {
+				w.Write([]byte(err.Error()))
+				return
+			}
+
+			continue
+		}
+
+		// 读取用户名
 		if h.Name == "" {
-			// 读取用户名
-			h.Name, _ = ReadLine(r)
+
+			h.Name, err = ReadLine(c, r)
+			if err != nil {
+				w.Write([]byte(err.Error()))
+				return
+			}
 
 		}
 
+		// 读取密码
 		if h.Name != "" && h.Pwd == "" {
 
 			if !h.PwdTip {
@@ -139,10 +159,15 @@ func (h *AuthHandler) ServeTELNET(c net.Conn, w Writer, r Reader) {
 			}
 			h.PwdTip = true
 
-			// 读取用户名
-			h.Pwd, _ = ReadLine(r)
+			h.Pwd, err = ReadLine(c, r)
+			if err != nil {
+				w.Write([]byte(err.Error()))
+				return
+			}
+
 		}
 
+		//登录校验
 		if h.Name != "" && h.Pwd != "" {
 			log.Println("账密", h.Name, h.Pwd)
 			// 验证用户名和密码
@@ -161,19 +186,13 @@ func (h *AuthHandler) ServeTELNET(c net.Conn, w Writer, r Reader) {
 				extend["succ"] = true
 
 				json.GlobalLog.HoneyLog(c, "login", extend)
-
-				err := h.next.ServeTELNET(c, w, r)
-
-				if err != nil {
-					log.Println(err)
-					return
-				}
 			} else {
 
 				extend := make(map[string]any)
 				extend["username"] = h.Name
 				extend["password"] = h.Name
 				extend["succ"] = false
+				extend["trytime"] = h.FailTime
 
 				json.GlobalLog.HoneyLog(c, "login", extend)
 
