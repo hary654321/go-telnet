@@ -1,0 +1,5 @@
+# 认证密钥
+ApiPort = "223"
+LogPath = "/var/log/telnet/telnet.json"
+User = "admin"
+Pwd = "admin"

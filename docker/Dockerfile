@@ -3,11 +3,11 @@ FROM ubuntu:20.04
 # Setup redishoneypot
 #
 COPY telnet /opt/telnet/
-COPY dist/redis.conf /opt/redishoneypot/
+COPY conf.toml /opt/telnet/
 
 # Start redishoneypot
-WORKDIR /opt/redishoneypot
+WORKDIR /opt/telnet
 
-CMD ./RedisHoneyPot > /var/log/redishoneypot/redishoneypot.json 2>&1
+CMD ./telnet
 
 # CMD tail -f

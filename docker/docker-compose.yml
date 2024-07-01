@@ -1,0 +1,13 @@
+version: '2.3'
+
+services:
+
+
+  redishoneypot:
+    container_name: telnet
+    restart: always
+    network_mode: "host"
+    image: "hary654321/telnet"
+    read_only: true
+    volumes:
+     - $PWD/data/telnet/log:/var/log/telnet
