@@ -11,3 +11,9 @@ services:
     read_only: true
     volumes:
      - $PWD/data/telnet/log:/var/log/telnet
+    environment:
+      HP_PORT: "1234"
+      LOGIN_PWD: "pwd"
+      LOGIN_NAME: "pwd"
+
+
